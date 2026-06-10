@@ -147,8 +147,11 @@ def main():
 
     try:
         topic = task.get("intake", {}).get("topic", "review")
+        base_dir = (cfg.get("output") or {}).get("base_dir")
+        if not base_dir:
+            sys.exit("config 缺 output.base_dir（综述产物落盘目录）")
         # workdir 名带 task id 短码：避免同日同主题的不同任务撞同一目录、互相覆盖
-        wd = os.path.join(cfg["output"]["base_dir"],
+        wd = os.path.join(os.path.expanduser(base_dir),
                           f"{safe_name(topic)}_{datetime.now().strftime('%Y%m%d')}_{task['id'][:8]}")
         for sub in ("", "01_search", "02_pdfs", "03_notes"):
             os.makedirs(os.path.join(wd, sub), exist_ok=True)
@@ -158,13 +161,16 @@ def main():
         prompt = build_prompt(task, wd, cfg)
         open(os.path.join(wd, "00_kimi_prompt.txt"), "w", encoding="utf-8").write(prompt)
 
-        kimi = cfg["execution"]["kimi_bin"]
-        sd = cfg["execution"]["skills_dir"]
+        execu = cfg.get("execution") or {}
+        kimi = os.path.expanduser(execu.get("kimi_bin") or "")
+        sd = os.path.expanduser(execu.get("skills_dir") or "")
+        if not kimi or not sd:
+            sys.exit("config 缺 execution.kimi_bin 或 execution.skills_dir")
         # config.toml 已 yolo=true；-p 模式禁止再带 --auto/--yolo，故默认空
-        flags = cfg["execution"].get("kimi_flags") or []
-        model = cfg["execution"].get("kimi_model")
-        budget = cfg["execution"].get("job_timeout_sec", 14400)
-        max_rounds = cfg["execution"].get("max_rounds", 5)
+        flags = execu.get("kimi_flags") or []
+        model = execu.get("kimi_model")
+        budget = execu.get("job_timeout_sec", 14400)
+        max_rounds = execu.get("max_rounds", 5)
         ab = cfg.get("ablesci", {})
         mw = min_words_of(task, cfg)
         CONTINUE = (

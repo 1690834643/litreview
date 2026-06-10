@@ -63,7 +63,7 @@ description: >
 - **写作质量（别写差）**：逻辑优先、一段一义、一句一论点，写精瘦不灌水；**严禁第二人称"你/你课题"**，用客观第三人称；去 AI 腔（不滥用"不是X而是Y"/"值得注意的是"/表演式铺垫/空泛排比）；claim 用"表明/提示/可能"校准；英文 American English、正文不用英文 em-dash；物种/基因名斜体。
 - 写 Markdown 综述：中文正文 + 英文术语；主题化叙述 + gap 分析 + **文献对比表**（含 IF/分区，见 references/report-template.md）。
 - 转 Word：`python scripts/build_docx.py review.md -o 04_report.docx --title "<题>"` —— **期刊标准字体**（正文 Times New Roman + 宋体；标题 黑体；表格五号；行距 1.5）。
-- 源 PDF 压缩：`python scripts/zip_pdfs.py 02_pdfs --outdir . --max-mb 100000` → `sources.zip`（打一个包）。邮件模式由 `send_result.py` 上传腾讯服务器换 https 下载链接（不发 PDF 附件）。
+- 源 PDF 压缩：`python scripts/zip_pdfs.py 02_pdfs --outdir . --max-mb 100000` → `sources.zip`（打一个包）。邮件模式由 `send_result.py` 投递：**服务器是可选的**——`delivery.pdf_via: server` 上传换 https 下载链接（需配 host/ssh/域名），`pdf_via: none`（或服务器未配齐）则源 PDF 仅留本地 `sources.zip`、回信只带 Word 附件不含链接。
 - 邮件模式额外写 `email_body.md`（回信正文）+ `05_pending_科研通.md`（缺口）。
 
 ## 工具映射（编排，不重造轮子）
@@ -86,8 +86,9 @@ description: >
 
 ## 邮件触发系统（无人值守）
 见 `email-trigger/`：WSL 系统 cron 每几分钟轮询 QQ 邮箱 → 命中 `[综述]`前缀+暗号 的邮件 →
-起 Kimi headless job（并发≤3）→ 跑完整流程 → Word 综述作邮件附件、源 PDF 上传服务器（nginx `/litdl/` → `https://your-domain.com/litdl/<随机token>/`）给下载链接回信。
-安装：`bash email-trigger/install_cron.sh 5`。配置：`email-trigger/config.yaml`。给同门：`email-trigger/触发邮件模板.md`。
+起 Kimi headless job（并发≤3）→ 跑完整流程 → Word 综述作邮件附件、源 PDF 上传服务器（nginx `/litdl/` → `https://<域名>/litdl/<随机token>/`）给下载链接回信（**服务器可选，见上**）。
+安装：`bash email-trigger/install_cron.sh 5`（WSL 还需 `sudo service cron start`）。配置：复制 `config.example.yaml`→`config.yaml` 按需改。给同门：`email-trigger/触发邮件模板.md`。
+依赖技能（需一起装）：**kimi-webbridge**（必需，检索下载）、**email-sender**（邮件模式必需，邮箱凭据）、**grill-me**（手动模式钉方向）、**read-paper**（可选深读）。
 
 ## 铁律（CLAUDE.md 对齐）
 - **真精读**：每篇精读文献必有填满的 `03_notes`，正文数字回原文有据；空模板/脑补=未完成。

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-send_result.py — 回信综述结果：Word 综述作邮件附件，源 PDF 上传腾讯服务器给随机下载链接。
+send_result.py — 回信综述结果：Word 综述作邮件附件，源 PDF 上传到服务器给随机下载链接。
 
 可重复执行：对同一 outdir 多次调用都安全（token 存 06_download.txt 复用，不产生孤儿目录）。
 产物目录里自动找：
@@ -40,7 +40,10 @@ def load_config():
 
 def smtp_config(cfg):
     """复用 email-sender 的 QQ SMTP 凭据。"""
-    return yaml.safe_load(open(cfg["mailbox"]["creds_from"], encoding="utf-8"))
+    creds_from = (cfg.get("mailbox") or {}).get("creds_from")
+    if not creds_from:
+        sys.exit("config 缺 mailbox.creds_from（指向 email-sender 配置）")
+    return yaml.safe_load(open(os.path.expanduser(creds_from), encoding="utf-8"))
 
 
 def collect(outdir, attach_docx=True):
@@ -110,8 +113,14 @@ def send_result(task, outdir, dry_run=False):
     expire = deliv.get("expire_days", 14)
 
     download_urls, note = [], ""
+    DELIV_KEYS = ["base_url", "ssh_key", "host", "ssh_port", "ssh_user", "remote_dir"]
     if zips and pdf_via == "server":
-        if dry_run:
+        missing = [k for k in DELIV_KEYS if not deliv.get(k)]
+        if missing:
+            # delivery 配置不完整：降级为不投递（不崩），源 PDF 留本地
+            note = f"源 PDF 未投递（delivery 缺 {','.join(missing)}，pdf_via=server 但服务器未配齐）；本地在 {outdir}"
+            print(f"# delivery 配置不完整，跳过上传: 缺 {missing}", file=sys.stderr)
+        elif dry_run:
             note = f"(dry-run 不上传) 将上传 {len(zips)} 个 zip 到 {deliv.get('base_url')}/<token>/"
         else:
             base, urls, err = upload_zips(zips, outdir, deliv)
@@ -121,7 +130,7 @@ def send_result(task, outdir, dry_run=False):
             else:
                 download_urls = urls
     elif zips:
-        note = f"源 PDF 未投递（pdf_via={pdf_via}）；本地在 {outdir}"
+        note = f"源 PDF 未投递（pdf_via={pdf_via}，仅本地保存）；本地在 {outdir}"
 
     body = build_body(outdir, task, download_urls, note, expire)
 

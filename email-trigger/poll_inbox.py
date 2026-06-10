@@ -60,7 +60,10 @@ def load_config():
 
 
 def imap_creds(cfg):
-    cf = load_yaml(cfg["mailbox"]["creds_from"])["smtp"]
+    creds_from = (cfg.get("mailbox") or {}).get("creds_from")
+    if not creds_from:
+        sys.exit("config 缺 mailbox.creds_from（指向 email-sender 配置）")
+    cf = load_yaml(os.path.expanduser(creds_from))["smtp"]
     return cf["user"], cf["password"]
 
 
@@ -147,12 +150,17 @@ def addr_of(raw_from):
 
 def poll(cfg, since_days=3, max_scan=400):
     user, pw = imap_creds(cfg)
-    prefix = cfg["trigger"]["subject_prefix"]
-    token = str(cfg["trigger"]["secret_token"])
-    whitelist = [a.lower() for a in (cfg["trigger"].get("sender_whitelist") or [])]
+    trig = cfg.get("trigger") or {}
+    prefix = trig.get("subject_prefix", "[综述]")
+    token = str(trig.get("secret_token") or "")
+    if not token:
+        print("# 未配置 trigger.secret_token，安全起见拒绝处理所有邮件", file=sys.stderr)
+        return []
+    whitelist = [a.lower() for a in (trig.get("sender_whitelist") or [])]
     seen = load_seen()
 
-    M = imaplib.IMAP4_SSL(cfg["mailbox"]["imap_host"], cfg["mailbox"].get("imap_port", 993))
+    mb = cfg.get("mailbox") or {}
+    M = imaplib.IMAP4_SSL(mb.get("imap_host", "imap.qq.com"), mb.get("imap_port", 993))
     M.login(user, pw)
     M.select("INBOX", readonly=True)
     since = (datetime.now() - timedelta(days=since_days)).strftime("%d-%b-%Y")

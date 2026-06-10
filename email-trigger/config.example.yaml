@@ -36,11 +36,14 @@ review:
 # ── 回信 ─────────────────────────────────────────────────
 reply:
   attach_docx: true               # Word 综述作邮件附件（小、可靠，不再发 PDF 附件）
-  cc: ["your-email@example.com"] # 每封回信/澄清信抄送（让管理员知道发了什么）；留空 [] 关闭
+  cc: []                          # 每封回信/澄清信抄送（让管理员知道发了什么）；如 ["you@example.com"]，留空 [] 关闭
 
-# ── 源 PDF 投递（走腾讯服务器中介，邮件只给下载链接）────────────
+# ── 源 PDF 投递（可选；走你自己的服务器中介，邮件只给下载链接）────────────
 delivery:
-  pdf_via: server                 # server=上传服务器给随机下载链接 | none=只本地存不投递
+  # server = 上传到远程 nginx 静态目录、回信给 https 下载链接（需配齐下面 host/ssh/域名）
+  # none   = 不上传，源 PDF 仅本地存于 output.base_dir 下的 sources.zip，回信只带 Word 附件不含链接（无服务器时用这个）
+  # 缺字段也会自动降级为 none（不报错）。
+  pdf_via: server
   host: "YOUR_SERVER_IP"
   ssh_port: 22
   ssh_user: root
@@ -53,4 +56,4 @@ delivery:
 ablesci:
   enable: true
   poll_interval_sec: 120          # 求助近实时，几分钟就有人上传；取件轮询间隔（秒）
-  max_wait_sec: 21600             # 求助近实时通常几分钟回填；此为兜底上限，超时落 pending 并先出综述
+  max_wait_sec: 21600             # 兜底上限：近实时通常几分钟回填，此为最长等待，超时落 pending 并先出综述

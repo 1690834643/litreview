@@ -55,6 +55,24 @@ curl -s -X POST http://127.0.0.1:10086/command \
 - `evaluate` 的 code 是**表达式**，不能有顶层 `return`；要 await 用 async IIFE：`(async()=>{ …; return x; })()`。
 - 下 PDF 两法：① navigate 到 PDF 链接，浏览器自动下到 `~/Downloads`（再 `mv` 进 `02_pdfs/`）；② 同源 `evaluate` 跑 `fetch(URL,{credentials:'include'})→blob→<a download>.click()`（绕 CORS）。
 
+**出版社页下载实操（一步步，可照做）**——以付费墙/被 Cloudflare 挡的文章为例：
+```bash
+API=http://127.0.0.1:10086/command; S=litreview-demo
+# 1) 开 DOI 解析页（带机构登录态）
+curl -s -X POST $API -H 'Content-Type: application/json' \
+  -d '{"action":"navigate","args":{"url":"https://doi.org/<DOI>","newTab":true},"session":"'$S'"}'; sleep 3
+# 2) snapshot 读页面、定位 PDF 链接/按钮的 @e ref（找 name 含 PDF/Download/Full text 的 link/button）
+curl -s -X POST $API -H 'Content-Type: application/json' \
+  -d '{"action":"snapshot","args":{},"session":"'$S'"}' > snap.json
+#    解析 snap.json 的 tree 取目标 @e；若 title/正文含 "Just a moment" = Cloudflare 盾，sleep 5~10 后重 snapshot（真浏览器多自动过盾）
+# 3) 点 PDF 链接（@e ref 或 CSS）→ 浏览器把 PDF 下到 ~/Downloads
+curl -s -X POST $API -H 'Content-Type: application/json' \
+  -d '{"action":"click","args":{"selector":"@eNN"},"session":"'$S'"}'; sleep 4
+# 4) 从 Downloads 取最新 PDF，校验真 PDF 后入库
+f=$(ls -t ~/Downloads/*.pdf | head -1); head -c5 "$f" | grep -q '%PDF' && mv "$f" 02_pdfs/<key>.pdf
+```
+同源有直链时改用上述②的 fetch→blob 下载更稳。盾过不去/无登录态 → 转 Sci-Hub 或科研通。各动作 JSON 范式见本节「Tier 5 核心动作」。
+
 **Tier 6 — 科研通求助（近实时，中文/CNKI/付费墙首选；见下）**
 
 ## 科研通(ablesci.com) 求助 —— 近实时，发了等上传即可（流程实测 2026-06）
