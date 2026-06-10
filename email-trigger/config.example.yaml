@@ -1,0 +1,56 @@
+# litreview 邮件触发配置 —— 复制为 config.yaml 后按需改。
+# config.yaml 在 ~/.claude/ 下，已被 .gitignore（.claude/*）忽略，token/白名单不会进版本库。
+
+# ── 触发条件 ──────────────────────────────────────────────
+trigger:
+  subject_prefix: "[综述]"        # 主题须以此开头才处理
+  secret_token: "YOUR-SECRET-TOKEN"     # 正文须含此暗号（防滥用，自己改一个）
+  sender_whitelist: []            # 留空=任何发件人(凭暗号)；填地址=仅这些人可触发
+                                  # 例: ["169xxxx@qq.com", "tongmen@xx.edu.cn"]
+
+# ── 邮箱（IMAP 收 / SMTP 发，复用 email-sender 的 QQ 凭据）─────
+mailbox:
+  imap_host: "imap.qq.com"
+  imap_port: 993
+  # 账号/授权码从 email-sender 配置读取，不在此重复：
+  creds_from: "/home/youruser/.claude/skills/email-sender/config.yaml"
+
+# ── 执行 ─────────────────────────────────────────────────
+execution:
+  max_concurrent: 3               # 同时最多几个 Kimi job，多的排队
+  kimi_bin: "/home/youruser/.kimi-code/bin/kimi"
+  skills_dir: "/home/youruser/.claude/skills"
+  kimi_model: ""                  # 留空=用 Kimi config.toml 默认
+  kimi_flags: []                  # config.toml 已 yolo=true 全自主；-p 模式不能再加 --auto/--yolo（会报错）
+  job_timeout_sec: 21600          # 单 job 总预算 6h（须 ≥ ablesci.max_wait_sec，否则科研通等待会被掐断）
+  max_rounds: 5                   # -p 跑完没产出 docx 就 --continue 续跑，最多几轮
+
+# ── 产物落盘 ─────────────────────────────────────────────
+output:
+  base_dir: "/path/to/lit_reviews"   # 每任务建 <主题>_<日期> 子目录
+
+# ── 综述深度 ─────────────────────────────────────────────
+review:
+  min_words: 8000                 # 综述正文最少中文字数（不含文献表/参考文献）；邮件正文 "字数:" 可覆盖
+
+# ── 回信 ─────────────────────────────────────────────────
+reply:
+  attach_docx: true               # Word 综述作邮件附件（小、可靠，不再发 PDF 附件）
+  cc: ["your-email@example.com"] # 每封回信/澄清信抄送（让管理员知道发了什么）；留空 [] 关闭
+
+# ── 源 PDF 投递（走腾讯服务器中介，邮件只给下载链接）────────────
+delivery:
+  pdf_via: server                 # server=上传服务器给随机下载链接 | none=只本地存不投递
+  host: "YOUR_SERVER_IP"
+  ssh_port: 22
+  ssh_user: root
+  ssh_key: "~/.ssh/id_ed25519"
+  remote_dir: "/opt/litreview_dl"          # 服务器静态目录（nginx /litdl/ 指向它）
+  base_url: "https://your-domain.com/litdl"     # 下载链接前缀（有效证书域名）
+  expire_days: 14                          # 服务器 cron 已按此自动清理过期 token 目录
+
+# ── 科研通兜底（异步求助 → 轮询等回填）──────────────────────
+ablesci:
+  enable: true
+  poll_interval_sec: 120          # 求助近实时，几分钟就有人上传；取件轮询间隔（秒）
+  max_wait_sec: 21600             # 求助近实时通常几分钟回填；此为兜底上限，超时落 pending 并先出综述

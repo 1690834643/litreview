@@ -1,0 +1,9 @@
+# 本地真实配置（含 token/服务器/SSH/邮箱凭据），绝不入库
+email-trigger/config.yaml
+# 运行态（含真实邮件 message-id / 主题 / 日志），绝不入库
+email-trigger/state/
+# Python 缓存与杂项
+__pycache__/
+*.pyc
+*.args
+.DS_Store
